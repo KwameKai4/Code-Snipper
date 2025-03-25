@@ -6,6 +6,7 @@ let settings = {
   htmlDepth: 3, // Default HTML inspection depth (up to 3 parent levels)
   showComputedStyles: true
 };
+let lastSelection = null;
 
 // Initialize the extension
 function initialize() {
@@ -18,9 +19,9 @@ function initialize() {
     if (result.showComputedStyles !== undefined) settings.showComputedStyles = result.showComputedStyles;
   });
   
-  // Add event listeners for text selection
-  document.addEventListener('mouseup', handleTextSelection);
-  document.addEventListener('keyup', handleTextSelection);
+  // Track selections but don't automatically show the panel
+  document.addEventListener('mouseup', trackSelection);
+  document.addEventListener('keyup', trackSelection);
 }
 
 // Create the inspector panel as a fixed position element
@@ -28,7 +29,8 @@ function createInspectorPanel() {
   inspectorPanel = document.createElement('div');
   inspectorPanel.id = 'code-inspector-panel';
   inspectorPanel.className = 'code-inspector-panel';
-  inspectorPanel.innerHTML = `
+  inspectorPanel.innerHTML = '';
+  // Add HTML content for the inspector panel
     <div class="code-inspector-header">
       <h3>Code Inspector</h3>
       <div class="code-inspector-controls">
@@ -162,25 +164,67 @@ function setupPanelEventListeners() {
   });
 }
 
-// Handle text selection events (mouse or keyboard)
-function handleTextSelection(event) {
+// Track text selection without showing the panel
+function trackSelection(event) {
   const selection = window.getSelection();
   
-  // Check if the selection is valid and not empty
+  // Save the selection for later use if it's valid
   if (selection.toString().trim().length > 0) {
-    // Don't show the panel if the selection is within the inspector panel itself
+    // Don't track if selection is within the inspector panel itself
     if (event.target.closest('#code-inspector-panel')) {
       return;
     }
     
-    updateInspectorPanel(selection);
-    positionPanel(event);
+    lastSelection = selection;
+  }
+}
+
+// Show the inspector panel when triggered by context menu
+function showInspector() {
+  if (lastSelection && lastSelection.toString().trim().length > 0) {
+    updateInspectorPanel(lastSelection);
+    
+    // Position near the selection
+    const range = lastSelection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    positionPanelFromRect(rect);
   } else {
-    // Hide panel when selection is cleared (unless clicked within the panel)
-    if (!event.target.closest('#code-inspector-panel')) {
-      inspectorPanel.classList.remove('visible');
+    console.log('No valid selection available');
+  }
+}
+
+// Position panel near the selection rectangle
+function positionPanelFromRect(rect) {
+  const panelWidth = 400; // Set panel width
+  const panelHeight = 500; // Approximate panel height
+  
+  // Calculate position based on selection bounds
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // Position to the right of the selection if possible
+  let x = rect.right + 10;
+  let y = rect.top;
+  
+  // If not enough space on the right, try left side
+  if (x + panelWidth > windowWidth) {
+    x = rect.left - panelWidth - 10;
+    
+    // If still not enough space, position below or above
+    if (x < 0) {
+      x = Math.max(0, (windowWidth - panelWidth) / 2);
+      y = rect.bottom + 10;
+      
+      // If not enough space below, try above
+      if (y + panelHeight > windowHeight) {
+        y = Math.max(0, rect.top - panelHeight - 10);
+      }
     }
   }
+  
+  // Apply position
+  inspectorPanel.style.left = `${x}px`;
+  inspectorPanel.style.top = `${y}px`;
 }
 
 // Update the inspector panel with information about the selected element
@@ -216,10 +260,11 @@ function updateInspectorPanel(selection) {
 
 // Position the panel near the selected text
 function positionPanel(event) {
+  // Keep this for backward compatibility
   const panelWidth = 400; // Set panel width
   const panelHeight = 500; // Approximate panel height
   
-  // Calculate position based on mouse coordinates or selection bounds
+  // Calculate position based on mouse coordinates
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
   
@@ -392,6 +437,13 @@ if (handleRestrictedPage()) {
 
 // Listen for messages from the background script or popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Show inspector on context menu click
+  if (message.action === 'showInspector') {
+    showInspector();
+    return true;
+  }
+  
+  // Get selection info for popup
   if (message.action === 'getSelectionInfo') {
     const selection = window.getSelection();
     if (selection.toString().trim().length > 0) {
@@ -417,6 +469,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     
     sendResponse({ success: false, message: 'No text currently selected' });
+    return true;
+  }
+  
+  // Update settings received from popup
+  if (message.action === 'updateSettings') {
+    if (message.settings.htmlDepth !== undefined) {
+      settings.htmlDepth = message.settings.htmlDepth;
+    }
+    if (message.settings.showComputedStyles !== undefined) {
+      settings.showComputedStyles = message.settings.showComputedStyles;
+    }
+    
+    // Update the panel if it's visible
+    if (inspectorPanel && inspectorPanel.classList.contains('visible') && lastSelection) {
+      updateInspectorPanel(lastSelection);
+    }
+    
+    sendResponse({ success: true });
     return true;
   }
 });

@@ -1,6 +1,32 @@
 // Background script for Code Inspector extension
 // Handles communication between popup and content scripts
 
+// Create the context menu item when the extension is installed
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install' || details.reason === 'update') {
+    // Set default settings on install
+    chrome.storage.sync.set({
+      htmlDepth: 3,
+      showComputedStyles: true
+    });
+    
+    // Create the context menu item
+    chrome.contextMenus.create({
+      id: "inspectElement",
+      title: "Inspect Element Code",
+      contexts: ["selection"]
+    });
+  }
+});
+
+// Listen for clicks on the context menu item
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "inspectElement") {
+    // Send a message to the content script to show the inspector
+    chrome.tabs.sendMessage(tab.id, { action: 'showInspector' });
+  }
+});
+
 // Listen for messages from the popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // If the message is requesting selection info
@@ -32,16 +58,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true;
-  }
-});
-
-// Handle installation and updates
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    // Set default settings on install
-    chrome.storage.sync.set({
-      htmlDepth: 3,
-      showComputedStyles: true
-    });
   }
 });
