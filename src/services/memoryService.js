@@ -56,7 +56,7 @@ export class MemoryService {
   async getMemories(userId, memoryType = null, limit = 10) {
     await this.initialize();
     let query = "SELECT * FROM memories WHERE user_id = ?";
-    const params = [userId];
+    let params = [userId];
 
     if (memoryType) {
       query += " AND type = ?";
@@ -64,17 +64,10 @@ export class MemoryService {
     }
 
     query += " ORDER BY importance DESC, created_at DESC LIMIT ?";
+    params.push(limit);
     
     const stmt = this.db.prepare(query);
-    let boundStmt = stmt;
-    
-    if (memoryType) {
-      boundStmt = stmt.bind([userId, memoryType, limit]);
-    } else {
-      boundStmt = stmt.bind([userId, limit]);
-    }
-    
-    const results = await boundStmt.all();
+    const results = await stmt.bind(params).all();
     return results.map(row => ({ ...row }));
   }
 
