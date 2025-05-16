@@ -49,14 +49,14 @@ export class MemoryService {
     const stmt = this.db.prepare(
       "INSERT INTO memories (user_id, content, type, importance) VALUES (?, ?, ?, ?)"
     );
-    await stmt.bind([userId, content, memoryType, importance]).run();
+    await stmt.bind([parseInt(userId, 10), content, memoryType, importance]).run();
     return true;
   }
 
   async getMemories(userId, memoryType = null, limit = 10) {
     await this.initialize();
     let query = "SELECT * FROM memories WHERE user_id = ?";
-    let params = [userId];
+    let params = [parseInt(userId, 10)];
 
     if (memoryType) {
       query += " AND type = ?";
@@ -76,7 +76,7 @@ export class MemoryService {
     const stmt = this.db.prepare(
       "DELETE FROM memories WHERE id = ? AND user_id = ?"
     );
-    const result = await stmt.bind([memoryId, userId]).run();
+    const result = await stmt.bind([parseInt(memoryId, 10), parseInt(userId, 10)]).run();
     return result.changes > 0;
   }
 
@@ -85,7 +85,7 @@ export class MemoryService {
     const stmt = this.db.prepare(
       "INSERT INTO interaction_history (user_id, message, response) VALUES (?, ?, ?)"
     );
-    await stmt.bind([userId, message, response]).run();
+    await stmt.bind([parseInt(userId, 10), message, response]).run();
     return true;
   }
 
@@ -94,7 +94,7 @@ export class MemoryService {
     const stmt = this.db.prepare(
       "SELECT * FROM interaction_history WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
     );
-    const results = await stmt.bind([userId, limit]).all();
+    const results = await stmt.bind([parseInt(userId, 10), limit]).all();
     return results.map(row => ({ ...row }));
   }
 
@@ -107,7 +107,7 @@ export class MemoryService {
       preferences = excluded.preferences,
       updated_at = CURRENT_TIMESTAMP
     `);
-    await stmt.bind([userId, JSON.stringify(preferences)]).run();
+    await stmt.bind([parseInt(userId, 10), JSON.stringify(preferences)]).run();
     return true;
   }
 
@@ -116,7 +116,7 @@ export class MemoryService {
     const stmt = this.db.prepare(
       "SELECT preferences FROM user_preferences WHERE user_id = ?"
     );
-    const result = await stmt.bind([userId]).get();
+    const result = await stmt.bind([parseInt(userId, 10)]).get();
     return result ? JSON.parse(result.preferences) : null;
   }
 
@@ -128,8 +128,9 @@ export class MemoryService {
       this.db.prepare("DELETE FROM user_preferences WHERE user_id = ?")
     ];
 
+    const parsedUserId = parseInt(userId, 10);
     for (const stmt of stmts) {
-      await stmt.bind([userId]).run();
+      await stmt.bind([parsedUserId]).run();
     }
 
     return true;

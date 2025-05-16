@@ -28,34 +28,11 @@ class TelegramBot {
       const userId = message.from.id;
       const text = message.text;
 
-      // Process user message
-      const learningContext = await this.learningService.processMessage(userId, text);
-      const memories = await this.memoryService.getMemories(userId);
-      const personalityState = this.personalityService.getCurrentState();
-
-      // Generate AI response
-      let response;
-      try {
-        response = await this.googleAiService.generateWithContext(
-          text,
-          memories.map(m => m.content),
-          personalityState
-        );
-      } catch (error) {
-        console.error('Google AI error, falling back to OpenRouter:', error);
-        response = await this.openRouterService.generateWithPersonality(
-          text,
-          personalityState,
-          memories.map(m => m.content)
-        );
-      }
-
-      // Adapt response based on learning context
-      response = this.learningService.adaptResponse(userId, response);
-      response = this.personalityService.modulateResponse(response);
-
-      // Store interaction
-      await this.memoryService.storeInteraction(userId, text, response);
+      // Generate AI response using OpenRouter with Gemma model
+      const response = await this.openRouterService.generateResponse([{
+        role: 'user',
+        content: text
+      }], 'google/gemma-3-12b-it:free');
 
       // Send response back to Telegram
       await this.sendTelegramMessage(message.chat.id, response);
