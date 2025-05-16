@@ -1,0 +1,18 @@
+name = "telegram-bot-worker"
+main = "src/index.js"
+compatibility_date = "2023-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bot-memory"
+database_id = "b5e3f802-b248-4d52-b307-cae53db02d53"
+
+[[kv_namespaces]]
+binding = "SESSION_STORE"
+id = "515697dca36546b3839025bea00d913c"
+
+[build]
+command = "npm run build"
+
+[triggers]
+crons = []

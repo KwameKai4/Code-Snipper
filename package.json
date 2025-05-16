@@ -1,0 +1,19 @@
+{
+  "name": "telegram-bot-worker",
+  "version": "1.0.0",
+  "description": "Telegram bot worker with memory and personality",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --outfile=dist/worker.js --format=esm --platform=browser --define:global=self",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "wrangler": "^3.0.0"
+  }
+}

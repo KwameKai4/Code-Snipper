@@ -1,0 +1,45 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Workers
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install Dependencies
+        run: npm install
+        
+      - name: Build Worker
+        run: npm run build
+        
+      - name: Create D1 Database
+        uses: cloudflare/wrangler-action@v3
+        with:
+          command: d1 create bot-memory
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          
+      - name: Run D1 Migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          command: d1 migrations apply bot-memory
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: deploy
